@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Local configuration and credentials
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Databricks local files
+.databricks/
+*.dbc
+
+# Test and runtime artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+logs/
+*.log
+
+# Temporary data
+tmp/
+temp/
+*.parquet
+*.csv
+*.jsonl
+
+# IDE and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
