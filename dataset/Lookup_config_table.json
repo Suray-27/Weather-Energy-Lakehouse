@@ -1,0 +1,16 @@
+{
+	"name": "Lookup_config_table",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_SQL_Lookup_config",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "control",
+			"table": "dataset_location"
+		}
+	}
+}
