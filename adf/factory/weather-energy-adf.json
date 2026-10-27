@@ -1,0 +1,15 @@
+{
+	"name": "weather-energy-adf",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "82157934-fbfa-4930-b7c4-fa6cf31a8925",
+		"tenantId": "cd782cef-d321-465e-a51c-1f7ed172bb68"
+	}
+}
