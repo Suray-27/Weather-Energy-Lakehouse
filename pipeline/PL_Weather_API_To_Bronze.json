@@ -62,7 +62,7 @@
 								"type": "Expression"
 							},
 							"p_fileName": {
-								"value": "forecast.json",
+								"value": "@{pipeline().RunId}_forecast.json",
 								"type": "Expression"
 							}
 						}
