@@ -151,7 +151,7 @@
 										"type": "String"
 									},
 									"records_written": {
-										"value": "",
+										"value": "0",
 										"type": "Int64"
 									},
 									"run_id": {
@@ -216,7 +216,7 @@
 										"type": "String"
 									},
 									"records_written": {
-										"value": "",
+										"value": "0",
 										"type": "Int64"
 									},
 									"run_id": {
