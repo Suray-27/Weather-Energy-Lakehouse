@@ -81,13 +81,6 @@
 										"value": "",
 										"type": "String"
 									},
-									"@run_id": {
-										"value": {
-											"value": "@pipeline().RunId",
-											"type": "Expression"
-										},
-										"type": "String"
-									},
 									"@dataset_id": {
 										"value": {
 											"value": "@int(item().dataset_id)",
@@ -98,6 +91,13 @@
 									"@location_name": {
 										"value": {
 											"value": "@item().location_name",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"@run_id": {
+										"value": {
+											"value": "@pipeline().RunId",
 											"type": "Expression"
 										},
 										"type": "String"
