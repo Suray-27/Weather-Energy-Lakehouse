@@ -201,7 +201,7 @@
 										"value": "FAILED",
 										"type": "String"
 									},
-									"@error_message": {
+									"error_message": {
 										"value": {
 											"value": "@activity('EP_Run_Weather_Ingestion').error.message",
 											"type": "Expression"
