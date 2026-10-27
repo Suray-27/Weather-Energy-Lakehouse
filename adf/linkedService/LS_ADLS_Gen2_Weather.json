@@ -1,0 +1,11 @@
+{
+	"name": "LS_ADLS_Gen2_Weather",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://energystrgacc.dfs.core.windows.net/"
+		}
+	}
+}

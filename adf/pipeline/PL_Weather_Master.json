@@ -1,0 +1,55 @@
+{
+	"name": "PL_Weather_Master",
+	"properties": {
+		"activities": [
+			{
+				"name": "FE_Each_Weather_Location",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@createArray(\n  json('{\"location\":\"chennai\",\"latitude\":\"13.0827\",\"longitude\":\"80.2707\"}'),\n  json('{\"location\":\"bengaluru\",\"latitude\":\"12.9716\",\"longitude\":\"77.5946\"}'),\n  json('{\"location\":\"hyderabad\",\"latitude\":\"17.3850\",\"longitude\":\"78.4867\"}')\n)",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "EP_Run_Weather_Ingestion",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "PL_Weather_API_To_Bronze",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"p_location": {
+										"value": "@item().location",
+										"type": "Expression"
+									},
+									"p_latitude": {
+										"value": "@item().latitude",
+										"type": "Expression"
+									},
+									"p_longitude": {
+										"value": "@item().longitude",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2026-10-26T03:20:21Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

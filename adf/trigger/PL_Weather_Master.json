@@ -1,0 +1,24 @@
+{
+	"name": "PL_Weather_Master",
+	"properties": {
+		"annotations": [],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "PL_Weather_Master",
+					"type": "PipelineReference"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2026-10-25T06:00:00",
+				"timeZone": "India Standard Time"
+			}
+		}
+	}
+}
