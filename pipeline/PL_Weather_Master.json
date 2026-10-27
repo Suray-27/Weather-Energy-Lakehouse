@@ -81,21 +81,21 @@
 										"value": "",
 										"type": "String"
 									},
-									"@location_name": {
+									"location_name": {
 										"value": {
 											"value": "@item().location_name",
 											"type": "Expression"
 										},
 										"type": "String"
 									},
-									"@run_id": {
+									"run_id": {
 										"value": {
 											"value": "@pipeline().RunId",
 											"type": "Expression"
 										},
 										"type": "String"
 									},
-									"@dataset_id": {
+									"dataset_id": {
 										"value": {
 											"value": "@int(item().dataset_id)",
 											"type": "Expression"
@@ -143,7 +143,7 @@
 										"value": "",
 										"type": "String"
 									},
-									"@location_name": {
+									"location_name": {
 										"value": {
 											"value": "@item().location_name",
 											"type": "Expression"
@@ -154,14 +154,14 @@
 										"value": "",
 										"type": "Int64"
 									},
-									"@run_id": {
+									"run_id": {
 										"value": {
 											"value": "@pipeline().RunId",
 											"type": "Expression"
 										},
 										"type": "String"
 									},
-									"@dataset_id": {
+									"dataset_id": {
 										"value": {
 											"value": "@int(item().dataset_id)",
 											"type": "Expression"
@@ -208,7 +208,7 @@
 										},
 										"type": "String"
 									},
-									"@location_name": {
+									"location_name": {
 										"value": {
 											"value": "@item().location_name",
 											"type": "Expression"
@@ -219,14 +219,14 @@
 										"value": "",
 										"type": "Int64"
 									},
-									"@run_id": {
+									"run_id": {
 										"value": {
 											"value": "@pipeline().RunId",
 											"type": "Expression"
 										},
 										"type": "String"
 									},
-									"@dataset_id": {
+									"dataset_id": {
 										"value": {
 											"value": "@int(item().dataset_id)",
 											"type": "Expression"
