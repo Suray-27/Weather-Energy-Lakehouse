@@ -131,7 +131,7 @@
 							"typeProperties": {
 								"storedProcedureName": "[control].[usp_FinishIngestionAttempt]",
 								"storedProcedureParameters": {
-									"@attempt_status": {
+									"attempt_status": {
 										"value": "SUCCEEDED",
 										"type": "String"
 									},
