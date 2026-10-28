@@ -100,6 +100,12 @@
 			"p_longitude": {
 				"type": "string",
 				"defaultValue": "80.2707"
+			},
+			"p_start_date": {
+				"type": "string"
+			},
+			"p_end_date": {
+				"type": "string"
 			}
 		},
 		"annotations": [],
