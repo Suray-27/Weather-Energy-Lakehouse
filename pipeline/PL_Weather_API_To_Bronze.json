@@ -48,6 +48,10 @@
 							"p_longitude": {
 								"value": "@pipeline().parameters.p_longitude",
 								"type": "Expression"
+							},
+							"p_start_date": {
+								"value": "@pipeline().parameters.p_start_date",
+								"type": "Expression"
 							}
 						}
 					}
