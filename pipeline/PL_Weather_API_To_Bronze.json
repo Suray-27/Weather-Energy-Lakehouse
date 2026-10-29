@@ -56,6 +56,10 @@
 							"p_end_date": {
 								"value": "@pipeline().parameters.p_end_date",
 								"type": "Expression"
+							},
+							"p_api_mode": {
+								"value": "@pipeline().parameters.p_api_mode",
+								"type": "Expression"
 							}
 						}
 					}
