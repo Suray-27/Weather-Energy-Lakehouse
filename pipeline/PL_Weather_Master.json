@@ -54,6 +54,14 @@
 									"p_longitude": {
 										"value": "@item().longitude",
 										"type": "Expression"
+									},
+									"p_start_date": {
+										"value": "@pipeline().parameters.p_start_date",
+										"type": "Expression"
+									},
+									"p_end_date": {
+										"value": "@pipeline().parameters.p_end_date",
+										"type": "Expression"
 									}
 								}
 							}
@@ -394,10 +402,12 @@
 		],
 		"parameters": {
 			"p_start_date": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
 			},
 			"p_end_date": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
 			}
 		},
 		"annotations": [],
