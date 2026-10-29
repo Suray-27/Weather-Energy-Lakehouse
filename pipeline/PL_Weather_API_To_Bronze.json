@@ -114,6 +114,10 @@
 			},
 			"p_end_date": {
 				"type": "string"
+			},
+			"p_api_mode": {
+				"type": "string",
+				"defaultValue": "forecast"
 			}
 		},
 		"annotations": [],
