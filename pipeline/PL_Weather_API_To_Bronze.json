@@ -117,7 +117,7 @@
 			},
 			"p_api_mode": {
 				"type": "string",
-				"defaultValue": "forecast"
+				"defaultValue": "@pipeline().parameters.p_api_mode"
 			}
 		},
 		"annotations": [],

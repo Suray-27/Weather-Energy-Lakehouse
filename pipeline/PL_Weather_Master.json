@@ -408,6 +408,10 @@
 			"p_end_date": {
 				"type": "string",
 				"defaultValue": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
+			},
+			"p_api_mode": {
+				"type": "string",
+				"defaultValue": "forecast"
 			}
 		},
 		"annotations": [],
