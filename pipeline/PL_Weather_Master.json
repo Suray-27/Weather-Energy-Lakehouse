@@ -392,6 +392,14 @@
 				}
 			}
 		],
+		"parameters": {
+			"p_start_date": {
+				"type": "string"
+			},
+			"p_end_date": {
+				"type": "string"
+			}
+		},
 		"annotations": [],
 		"lastPublishTime": "2026-10-26T03:20:21Z"
 	},
