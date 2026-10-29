@@ -3,7 +3,13 @@
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "LS_OpenMeteo_HTTP",
-			"type": "LinkedServiceReference"
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"p_base_url": {
+					"value": "@if(equals(dataset().p_api_mode, 'archive'), 'https://archive-api.open-meteo.com/', 'https://api.open-meteo.com/')",
+					"type": "Expression"
+				}
+			}
 		},
 		"parameters": {
 			"p_latitude": {
