@@ -19,6 +19,10 @@
 			},
 			"p_end_date": {
 				"type": "string"
+			},
+			"p_api_mode": {
+				"type": "string",
+				"defaultValue": "forecast"
 			}
 		},
 		"annotations": [],
@@ -27,7 +31,7 @@
 			"location": {
 				"type": "HttpServerLocation",
 				"relativeUrl": {
-					"value": "@concat(\n  'v1/forecast?latitude=',\n  dataset().p_latitude,\n  '&longitude=',\n  dataset().p_longitude,\n  '&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m',\n  '&start_date=',\n  dataset().p_start_date,\n  '&end_date=',\n  dataset().p_end_date,\n  '&timezone=UTC'\n)",
+					"value": "@concat(\n  'v1/',dataset().p_api_mode,'?latitude=',\n  dataset().p_latitude,\n  '&longitude=',\n  dataset().p_longitude,\n  '&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m',\n  '&start_date=',\n  dataset().p_start_date,\n  '&end_date=',\n  dataset().p_end_date,\n  '&timezone=UTC'\n)",
 					"type": "Expression"
 				}
 			}
