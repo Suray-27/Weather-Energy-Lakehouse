@@ -518,12 +518,10 @@
 		],
 		"parameters": {
 			"p_start_date": {
-				"type": "string",
-				"defaultValue": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
+				"type": "string"
 			},
 			"p_end_date": {
-				"type": "string",
-				"defaultValue": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
+				"type": "string"
 			},
 			"p_api_mode": {
 				"type": "string"
