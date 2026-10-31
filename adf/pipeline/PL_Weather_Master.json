@@ -448,6 +448,65 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "LK_Get_Final_Run_Status",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@concat(\n    'SELECT run_status FROM control.pipeline_run_history WHERE run_id = ''',\n    pipeline().RunId,\n    ''''\n)",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Lookup_config_table",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "IF_Final_Status_Check",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "LK_Get_Final_Run_Status",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(\n    activity('LK_Get_Final_Run_Status').output.firstRow.run_status,\n    'SUCCEEDED'\n))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "FAIL_Final_Pipeline_Status",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "One or more location ingestions failed. Check pipeline_run_history for details.",
+								"errorCode": "INGESTION_NOT_SUCCESSFUL"
+							}
+						}
+					]
+				}
 			}
 		],
 		"parameters": {
