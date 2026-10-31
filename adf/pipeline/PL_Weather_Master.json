@@ -3,7 +3,236 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "FE_Each_Weather_Location",
+				"name": "Lookup_Table_To_Load",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "SP_Start_Pipeline_Run",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_Lookup_config",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": {
+								"value": "DECLARE @recovery_run_id VARCHAR(100) =\n    NULLIF('@{pipeline().parameters.p_recovery_run_id}', '');\n\nDECLARE @current_api_mode VARCHAR(20) =\n    '@{pipeline().parameters.p_api_mode}';\n\nDECLARE @current_start_date DATE =\n    TRY_CONVERT(DATE, NULLIF('@{pipeline().parameters.p_start_date}', ''));\n\nDECLARE @current_end_date DATE =\n    TRY_CONVERT(DATE, NULLIF('@{pipeline().parameters.p_end_date}', ''));\n\n-- Automatic recovery: latest eligible failed/partial run\nIF @recovery_run_id IS NULL\nBEGIN\n    SELECT TOP 1\n        @recovery_run_id =\n            CASE\n                WHEN run_status IN ('PARTIAL', 'FAILED')\n                 AND api_mode IS NOT NULL\n                 AND LOWER(api_mode) = LOWER(@current_api_mode)\n                 AND (\n                     LOWER(api_mode) = 'forecast'\n                     OR (\n                         LOWER(api_mode) = 'archive'\n                         AND start_date IS NOT NULL\n                         AND end_date IS NOT NULL\n                     )\n                 )\n                THEN run_id\n                ELSE NULL\n            END\n    FROM control.pipeline_run_history\n    ORDER BY started_at DESC, run_id DESC;\nEND;\n\n;WITH RecoveryRows AS\n(\n    SELECT\n        CAST(1 AS INT) AS execution_phase,\n        p.run_id AS recovery_run_id,\n        CAST(a.attempt_id AS BIGINT) AS retry_of_attempt_id,\n        CAST(a.attempt_number + 1 AS INT) AS attempt_number,\n        p.api_mode,\n        p.start_date,\n        p.end_date,\n        d.dataset_id,\n        d.dataset_name,\n        l.location_name,\n        l.latitude,\n        l.longitude\n    FROM control.pipeline_run_history p\n    JOIN control.ingestion_attempt_history a\n        ON a.run_id = p.run_id\n    JOIN control.dataset_config d\n        ON d.dataset_id = a.dataset_id\n    JOIN control.dataset_location l\n        ON l.dataset_id = a.dataset_id\n       AND l.location_name = a.location_name\n    WHERE p.run_id = @recovery_run_id\n      AND p.run_status IN ('PARTIAL', 'FAILED')\n      AND d.is_active = 1\n      AND l.is_active = 1\n      AND a.attempt_id = (\n          SELECT MAX(a2.attempt_id)\n          FROM control.ingestion_attempt_history a2\n          WHERE a2.run_id = a.run_id\n            AND a2.dataset_id = a.dataset_id\n            AND a2.location_name = a.location_name\n      )\n      AND a.attempt_status = 'FAILED'\n),\nRegularRows AS\n(\n    SELECT\n        CAST(2 AS INT) AS execution_phase,\n        CAST(NULL AS VARCHAR(100)) AS recovery_run_id,\n        CAST(NULL AS BIGINT) AS retry_of_attempt_id,\n        CAST(1 AS INT) AS attempt_number,\n        @current_api_mode AS api_mode,\n        @current_start_date AS start_date,\n        @current_end_date AS end_date,\n        d.dataset_id,\n        d.dataset_name,\n        l.location_name,\n        l.latitude,\n        l.longitude\n    FROM control.dataset_config d\n    JOIN control.dataset_location l\n        ON d.dataset_id = l.dataset_id\n    WHERE d.is_active = 1\n      AND l.is_active = 1\n),\nCombinedRows AS\n(\n    SELECT * FROM RecoveryRows\n    UNION ALL\n    SELECT * FROM RegularRows\n)\nSELECT\n    execution_phase,\n    recovery_run_id,\n    retry_of_attempt_id,\n    attempt_number,\n    api_mode,\n    start_date,\n    end_date,\n    dataset_id,\n    dataset_name,\n    location_name,\n    latitude,\n    longitude\nFROM CombinedRows\nORDER BY\n    execution_phase,\n    dataset_name,\n    location_name;",
+								"type": "Expression"
+							}
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "SP_Start_Pipeline_Run",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[control].[usp_StartPipelineRun]",
+					"storedProcedureParameters": {
+						"api_mode": {
+							"value": {
+								"value": "@pipeline().parameters.p_api_mode",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"end_date": {
+							"value": {
+								"value": "@pipeline().parameters.p_end_date",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
+						"pipeline_name": {
+							"value": {
+								"value": "@pipeline().Pipeline",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"start_date": {
+							"value": {
+								"value": "@pipeline().parameters.p_start_date",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_Lookup_config",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "SP_Finish_Pipeline_Run",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "IF_Check_Failed_Locations",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[control].[usp_FinishPipelineRunFromAttempts]",
+					"storedProcedureParameters": {
+						"run_id": {
+							"value": {
+								"value": "@pipeline().RunId",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_Lookup_config",
+					"type": "LinkedServiceReference"
+				}
+			},
+			{
+				"name": "IF_Check_Failed_Locations",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "FE_All_Ingestion",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(length(variables('v_failed_locations')), 0)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "FAIL_Location_Processing",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": {
+									"value": "@concat(\n    'Weather ingestion failed for locations: ',\n    join(variables('v_failed_locations'), ', ')\n)",
+									"type": "Expression"
+								},
+								"errorCode": "LOCATION_PROCESSING_FAILED"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "LK_Get_Final_Run_Status",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "SP_Finish_Pipeline_Run",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@concat(\n    'SELECT run_status FROM control.pipeline_run_history WHERE run_id = ''',\n    pipeline().RunId,\n    ''''\n)",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Lookup_config_table",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "IF_Final_Status_Check",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "LK_Get_Final_Run_Status",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(\n    activity('LK_Get_Final_Run_Status').output.firstRow.run_status,\n    'SUCCEEDED'\n))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "FAIL_Final_Pipeline_Status",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "One or more location ingestions failed. Check pipeline_run_history for details.",
+								"errorCode": "INGESTION_NOT_SUCCESSFUL"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "FE_All_Ingestion",
 				"type": "ForEach",
 				"dependsOn": [
 					{
@@ -56,15 +285,15 @@
 										"type": "Expression"
 									},
 									"p_start_date": {
-										"value": "@pipeline().parameters.p_start_date",
+										"value": "@if(equals(item().api_mode,'forecast'),'',formatDateTime(item().start_date,'yyyy-MM-dd'))",
 										"type": "Expression"
 									},
 									"p_end_date": {
-										"value": "@pipeline().parameters.p_end_date",
+										"value": "@if(\n    equals(toLower(item().api_mode), 'forecast'),\n    '',\n    formatDateTime(item().end_date, 'yyyy-MM-dd')\n)",
 										"type": "Expression"
 									},
 									"p_api_mode": {
-										"value": "@pipeline().parameters.p_api_mode",
+										"value": "@item().api_mode",
 										"type": "Expression"
 									}
 								}
@@ -86,7 +315,10 @@
 								"storedProcedureName": "[control].[usp_StartIngestionAttempt]",
 								"storedProcedureParameters": {
 									"attempt_number": {
-										"value": "1",
+										"value": {
+											"value": "@item().attempt_number",
+											"type": "Expression"
+										},
 										"type": "Int32"
 									},
 									"bronze_path": {
@@ -113,6 +345,12 @@
 											"type": "Expression"
 										},
 										"type": "Int32"
+									},
+									"retry_of_attempt_id": {
+										"value": {
+											"value": "@item().retry_of_attempt_id",
+											"type": "Expression"
+										}
 									}
 								}
 							},
@@ -302,237 +540,6 @@
 									"value": "@variables('v_temp_failed_locations')",
 									"type": "Expression"
 								}
-							}
-						}
-					]
-				}
-			},
-			{
-				"name": "Lookup_Table_To_Load",
-				"type": "Script",
-				"dependsOn": [
-					{
-						"activity": "SP_Start_Pipeline_Run",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 2,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"linkedServiceName": {
-					"referenceName": "LS_SQL_Lookup_config",
-					"type": "LinkedServiceReference"
-				},
-				"typeProperties": {
-					"scripts": [
-						{
-							"type": "Query",
-							"text": {
-								"value": "DECLARE @current_api_mode VARCHAR(20) =\n    '@{pipeline().parameters.p_api_mode}';\n\nDECLARE @current_start_date DATE =\n    TRY_CONVERT(DATE, NULLIF(\n        '@{pipeline().parameters.p_start_date}', ''\n    ));\n\nDECLARE @current_end_date DATE =\n    TRY_CONVERT(DATE, NULLIF(\n        '@{pipeline().parameters.p_end_date}', ''\n    ));\n\nDECLARE @manual_recovery_run_id VARCHAR(100) =\n    NULLIF('@{pipeline().parameters.p_recovery_run_id}', '');\n\nDECLARE @recovery_run_id VARCHAR(100);\n\n-- Select previous failed/partial run for the same API mode\nIF @manual_recovery_run_id IS NOT NULL\nBEGIN\n    SET @recovery_run_id = @manual_recovery_run_id;\nEND\nELSE\nBEGIN\n    SELECT TOP 1\n        @recovery_run_id = run_id\n    FROM control.pipeline_run_history\n    WHERE run_status IN ('PARTIAL', 'FAILED')\n      AND api_mode IS NOT NULL\n      AND LOWER(api_mode) = LOWER(@current_api_mode)\n      AND (\n          LOWER(api_mode) = 'forecast'\n          OR (\n              LOWER(api_mode) = 'archive'\n              AND start_date IS NOT NULL\n              AND end_date IS NOT NULL\n          )\n      )\n    ORDER BY started_at DESC;\nEND;\n\n-- RESULT SET 1: Current request\nSELECT\n    @current_api_mode AS api_mode,\n    @current_start_date AS start_date,\n    @current_end_date AS end_date;\n\n-- RESULT SET 2: All active locations for regular ingestion\nSELECT\n    d.dataset_id,\n    d.dataset_name,\n    l.location_name,\n    l.latitude,\n    l.longitude\nFROM control.dataset_config d\nJOIN control.dataset_location l\n    ON d.dataset_id = l.dataset_id\nWHERE d.is_active = 1\n  AND l.is_active = 1\nORDER BY d.dataset_name, l.location_name;\n\n-- RESULT SET 3: Previous failed request and failed locations\nSELECT\n    p.run_id AS recovery_run_id,\n    p.api_mode,\n    p.start_date,\n    p.end_date,\n    l.dataset_id,\n    d.dataset_name,\n    l.location_name,\n    l.latitude,\n    l.longitude\nFROM control.pipeline_run_history p\nJOIN control.ingestion_attempt_history a\n    ON a.run_id = p.run_id\nJOIN control.dataset_config d\n    ON d.dataset_id = a.dataset_id\nJOIN control.dataset_location l\n    ON l.dataset_id = a.dataset_id\n   AND l.location_name = a.location_name\nWHERE p.run_id = @recovery_run_id\n  AND d.is_active = 1\n  AND l.is_active = 1\n  AND a.attempt_status = 'FAILED'\n  AND a.attempt_id = (\n      SELECT MAX(a2.attempt_id)\n      FROM control.ingestion_attempt_history a2\n      WHERE a2.run_id = a.run_id\n        AND a2.dataset_id = a.dataset_id\n        AND a2.location_name = a.location_name\n  )\nORDER BY d.dataset_name, l.location_name;",
-								"type": "Expression"
-							}
-						}
-					],
-					"scriptBlockExecutionTimeout": "02:00:00"
-				}
-			},
-			{
-				"name": "SP_Start_Pipeline_Run",
-				"type": "SqlServerStoredProcedure",
-				"state": "Inactive",
-				"onInactiveMarkAs": "Succeeded",
-				"dependsOn": [],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"storedProcedureName": "[control].[usp_StartPipelineRun]",
-					"storedProcedureParameters": {
-						"api_mode": {
-							"value": {
-								"value": "@pipeline().parameters.p_api_mode",
-								"type": "Expression"
-							},
-							"type": "String"
-						},
-						"end_date": {
-							"value": {
-								"value": "@pipeline().parameters.p_end_date",
-								"type": "Expression"
-							},
-							"type": "DateTime"
-						},
-						"pipeline_name": {
-							"value": {
-								"value": "@pipeline().Pipeline",
-								"type": "Expression"
-							},
-							"type": "String"
-						},
-						"run_id": {
-							"value": {
-								"value": "@pipeline().RunId",
-								"type": "Expression"
-							},
-							"type": "String"
-						},
-						"start_date": {
-							"value": {
-								"value": "@pipeline().parameters.p_start_date",
-								"type": "Expression"
-							},
-							"type": "DateTime"
-						}
-					}
-				},
-				"linkedServiceName": {
-					"referenceName": "LS_SQL_Lookup_config",
-					"type": "LinkedServiceReference"
-				}
-			},
-			{
-				"name": "SP_Finish_Pipeline_Run",
-				"type": "SqlServerStoredProcedure",
-				"dependsOn": [
-					{
-						"activity": "IF_Check_Failed_Locations",
-						"dependencyConditions": [
-							"Completed"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"storedProcedureName": "[control].[usp_FinishPipelineRunFromAttempts]",
-					"storedProcedureParameters": {
-						"run_id": {
-							"value": {
-								"value": "@pipeline().RunId",
-								"type": "Expression"
-							},
-							"type": "String"
-						}
-					}
-				},
-				"linkedServiceName": {
-					"referenceName": "LS_SQL_Lookup_config",
-					"type": "LinkedServiceReference"
-				}
-			},
-			{
-				"name": "IF_Check_Failed_Locations",
-				"type": "IfCondition",
-				"dependsOn": [
-					{
-						"activity": "FE_Each_Weather_Location",
-						"dependencyConditions": [
-							"Completed"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"expression": {
-						"value": "@greater(length(variables('v_failed_locations')), 0)",
-						"type": "Expression"
-					},
-					"ifTrueActivities": [
-						{
-							"name": "FAIL_Location_Processing",
-							"type": "Fail",
-							"dependsOn": [],
-							"userProperties": [],
-							"typeProperties": {
-								"message": {
-									"value": "@concat(\n    'Weather ingestion failed for locations: ',\n    join(variables('v_failed_locations'), ', ')\n)",
-									"type": "Expression"
-								},
-								"errorCode": "LOCATION_PROCESSING_FAILED"
-							}
-						}
-					]
-				}
-			},
-			{
-				"name": "LK_Get_Final_Run_Status",
-				"type": "Lookup",
-				"dependsOn": [
-					{
-						"activity": "SP_Finish_Pipeline_Run",
-						"dependencyConditions": [
-							"Completed"
-						]
-					}
-				],
-				"policy": {
-					"timeout": "0.12:00:00",
-					"retry": 0,
-					"retryIntervalInSeconds": 30,
-					"secureOutput": false,
-					"secureInput": false
-				},
-				"userProperties": [],
-				"typeProperties": {
-					"source": {
-						"type": "AzureSqlSource",
-						"sqlReaderQuery": {
-							"value": "@concat(\n    'SELECT run_status FROM control.pipeline_run_history WHERE run_id = ''',\n    pipeline().RunId,\n    ''''\n)",
-							"type": "Expression"
-						},
-						"queryTimeout": "02:00:00",
-						"partitionOption": "None"
-					},
-					"dataset": {
-						"referenceName": "Lookup_config_table",
-						"type": "DatasetReference"
-					}
-				}
-			},
-			{
-				"name": "IF_Final_Status_Check",
-				"type": "IfCondition",
-				"dependsOn": [
-					{
-						"activity": "LK_Get_Final_Run_Status",
-						"dependencyConditions": [
-							"Succeeded"
-						]
-					}
-				],
-				"userProperties": [],
-				"typeProperties": {
-					"expression": {
-						"value": "@not(equals(\n    activity('LK_Get_Final_Run_Status').output.firstRow.run_status,\n    'SUCCEEDED'\n))",
-						"type": "Expression"
-					},
-					"ifTrueActivities": [
-						{
-							"name": "FAIL_Final_Pipeline_Status",
-							"type": "Fail",
-							"dependsOn": [],
-							"userProperties": [],
-							"typeProperties": {
-								"message": "One or more location ingestions failed. Check pipeline_run_history for details.",
-								"errorCode": "INGESTION_NOT_SUCCESSFUL"
 							}
 						}
 					]
