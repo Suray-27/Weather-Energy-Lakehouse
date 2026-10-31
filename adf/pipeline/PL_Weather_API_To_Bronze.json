@@ -74,7 +74,7 @@
 								"type": "Expression"
 							},
 							"p_fileName": {
-								"value": "@concat(\n    toLower(pipeline().parameters.p_api_mode),\n    '_',\n    formatDateTime(pipeline().parameters.p_start_date, 'yyyy-MM-dd'),\n    '_to_',\n    formatDateTime(pipeline().parameters.p_end_date, 'yyyy-MM-dd'),\n    '_',\n    formatDateTime(pipeline().TriggerTime, 'yyyyMMddTHHmmss'),\n    '.json'\n)",
+								"value": "@concat(\n    toLower(pipeline().parameters.p_api_mode),\n    '_',\n    pipeline().parameters.p_start_date,\n    '_to_',\n    pipeline().parameters.p_end_date,\n    '_',\n    pipeline().RunId,\n    '.json'\n)",
 								"type": "Expression"
 							},
 							"p_apiMode": {
