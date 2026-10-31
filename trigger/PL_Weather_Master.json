@@ -2,7 +2,7 @@
 	"name": "PL_Weather_Master",
 	"properties": {
 		"annotations": [],
-		"runtimeState": "Stopped",
+		"runtimeState": "Started",
 		"pipelines": [
 			{
 				"pipelineReference": {
