@@ -74,7 +74,7 @@
 								"type": "Expression"
 							},
 							"p_fileName": {
-								"value": "@concat(\n    toLower(pipeline().parameters.p_api_mode),\n    '_',\n    pipeline().parameters.p_start_date,\n    '_to_',\n    pipeline().parameters.p_end_date,\n    '_',\n    pipeline().RunId,\n    '.json'\n)",
+								"value": "@if(\n    equals(toLower(pipeline().parameters.p_api_mode), 'forecast'),\n    concat(\n        'forecast_',\n        formatDateTime(utcNow(), 'yyyy-MM-dd'),\n        '_to_',\n        formatDateTime(addDays(utcNow(), 7), 'yyyy-MM-dd'),\n        '_',\n        pipeline().RunId,\n        '.json'\n    ),\n    concat(\n        'archive_',\n        pipeline().parameters.p_start_date,\n        '_to_',\n        pipeline().parameters.p_end_date,\n        '_',\n        pipeline().RunId,\n        '.json'\n    )\n)",
 								"type": "Expression"
 							},
 							"p_apiMode": {
