@@ -298,7 +298,10 @@
 							"userProperties": [],
 							"typeProperties": {
 								"variableName": "v_failed_locations",
-								"value": "@variables('v_temp_failed_locations')"
+								"value": {
+									"value": "@variables('v_temp_failed_locations')",
+									"type": "Expression"
+								}
 							}
 						}
 					]
@@ -465,7 +468,7 @@
 				"type": "String"
 			},
 			"v_failed_locations": {
-				"type": "String"
+				"type": "Array"
 			},
 			"v_temp_failed_locations": {
 				"type": "Array"
