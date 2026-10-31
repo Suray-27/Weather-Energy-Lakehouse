@@ -74,7 +74,11 @@
 								"type": "Expression"
 							},
 							"p_fileName": {
-								"value": "@concat(pipeline().RunId, '_forecast.json')",
+								"value": "@concat(\n    toLower(pipeline().parameters.p_api_mode),\n    '_',\n    formatDateTime(pipeline().parameters.p_start_date, 'yyyy-MM-dd'),\n    '_to_',\n    formatDateTime(pipeline().parameters.p_end_date, 'yyyy-MM-dd'),\n    '_',\n    formatDateTime(pipeline().TriggerTime, 'yyyyMMddTHHmmss'),\n    '.json'\n)",
+								"type": "Expression"
+							},
+							"p_apiMode": {
+								"value": "@pipeline().parameters.p_api_mode",
 								"type": "Expression"
 							}
 						}

@@ -13,6 +13,9 @@
 			"p_fileName": {
 				"type": "string",
 				"defaultValue": "forecast.json"
+			},
+			"p_apiMode": {
+				"type": "string"
 			}
 		},
 		"annotations": [],
@@ -25,7 +28,7 @@
 					"type": "Expression"
 				},
 				"folderPath": {
-					"value": "@concat('weather/adf_test/location=', dataset().p_location)",
+					"value": "@concat('weather/',toLower(dataset().p_apiMode),'/location=', dataset().p_location)",
 					"type": "Expression"
 				},
 				"fileSystem": "bronze"

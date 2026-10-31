@@ -335,7 +335,7 @@
 						{
 							"type": "Query",
 							"text": {
-								"value": "SELECT\n    l.location_name,\n    l.latitude,\n    l.longitude,\n    l. dataset_id\nFROM control.dataset_config AS d\nJOIN control.dataset_location AS l\n    ON d.dataset_id = l.dataset_id\nWHERE d.is_active = 1\n  AND l.is_active = 1\nORDER BY d.dataset_name, l.location_name;",
+								"value": "@concat(\n'WITH RankedAttempts AS\n(\n    SELECT\n        dataset_id,\n        location_name,\n        attempt_status,\n        ROW_NUMBER() OVER (\n            PARTITION BY dataset_id, location_name\n            ORDER BY attempt_id DESC\n        ) AS rn\n    FROM control.ingestion_attempt_history\n    WHERE run_id = ''', pipeline().parameters.p_recovery_run_id, '''\n)\nSELECT\n    l.location_name,\n    l.latitude,\n    l.longitude,\n    l.dataset_id\nFROM control.dataset_config AS d\nJOIN control.dataset_location AS l\n    ON d.dataset_id = l.dataset_id\nWHERE d.is_active = 1\n  AND l.is_active = 1\n  AND (\n      ''', pipeline().parameters.p_recovery_run_id, ''' = ''''\n      OR EXISTS (\n          SELECT 1\n          FROM RankedAttempts AS ra\n          WHERE ra.rn = 1\n            AND ra.attempt_status = ''FAILED''\n            AND ra.dataset_id = l.dataset_id\n            AND ra.location_name = l.location_name\n      )\n  )\nORDER BY d.dataset_name, l.location_name;'\n)",
 								"type": "Expression"
 							}
 						}
@@ -448,6 +448,72 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "LK_Get_Final_Run_Status",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "SP_Finish_Pipeline_Run",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@concat(\n    'SELECT run_status FROM control.pipeline_run_history WHERE run_id = ''',\n    pipeline().RunId,\n    ''''\n)",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "Lookup_config_table",
+						"type": "DatasetReference"
+					}
+				}
+			},
+			{
+				"name": "IF_Final_Status_Check",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "LK_Get_Final_Run_Status",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@not(equals(\n    activity('LK_Get_Final_Run_Status').output.firstRow.run_status,\n    'SUCCEEDED'\n))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "FAIL_Final_Pipeline_Status",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "One or more location ingestions failed. Check pipeline_run_history for details.",
+								"errorCode": "INGESTION_NOT_SUCCESSFUL"
+							}
+						}
+					]
+				}
 			}
 		],
 		"parameters": {
@@ -460,6 +526,9 @@
 				"defaultValue": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
 			},
 			"p_api_mode": {
+				"type": "string"
+			},
+			"p_recovery_run_id": {
 				"type": "string"
 			}
 		},
