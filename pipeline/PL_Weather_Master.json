@@ -255,6 +255,51 @@
 								"referenceName": "LS_SQL_Lookup_config",
 								"type": "LinkedServiceReference"
 							}
+						},
+						{
+							"name": "SV_Set_Failure_Location",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "EP_Run_Weather_Ingestion",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "v_temp_failed_locations",
+								"value": {
+									"value": "@union(\n    variables('v_failed_locations'),\n    createArray(item().location_name)\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SV_Update_Failed_Locations",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "SV_Set_Failure_Location",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "v_failed_locations",
+								"value": "@variables('v_temp_failed_locations')"
+							}
 						}
 					]
 				}
@@ -402,6 +447,40 @@
 					"referenceName": "LS_SQL_Lookup_config",
 					"type": "LinkedServiceReference"
 				}
+			},
+			{
+				"name": "IF_Check_Failed_Locations",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "FE_Each_Weather_Location",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(length(variables('v_failed_locations')), 0)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "FAIL_Location_Processing",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": {
+									"value": "@concat(\n    'Weather ingestion failed for locations: ',\n    join(variables('v_failed_locations'), ', ')\n)",
+									"type": "Expression"
+								},
+								"errorCode": "LOCATION_PROCESSING_FAILED"
+							}
+						}
+					]
+				}
 			}
 		],
 		"parameters": {
@@ -416,6 +495,17 @@
 			"p_api_mode": {
 				"type": "string",
 				"defaultValue": "forecast"
+			}
+		},
+		"variables": {
+			"v_loaction": {
+				"type": "String"
+			},
+			"v_failed_locations": {
+				"type": "String"
+			},
+			"v_temp_failed_locations": {
+				"type": "Array"
 			}
 		},
 		"annotations": [],
