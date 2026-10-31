@@ -335,7 +335,7 @@
 						{
 							"type": "Query",
 							"text": {
-								"value": "@concat(\n'WITH RankedAttempts AS\n(\n    SELECT\n        dataset_id,\n        location_name,\n        attempt_status,\n        ROW_NUMBER() OVER (\n            PARTITION BY dataset_id, location_name\n            ORDER BY attempt_id DESC\n        ) AS rn\n    FROM control.ingestion_attempt_history\n    WHERE run_id = ''', pipeline().parameters.p_recovery_run_id, '''\n)\nSELECT\n    l.location_name,\n    l.latitude,\n    l.longitude,\n    l.dataset_id\nFROM control.dataset_config AS d\nJOIN control.dataset_location AS l\n    ON d.dataset_id = l.dataset_id\nWHERE d.is_active = 1\n  AND l.is_active = 1\n  AND (\n      ''', pipeline().parameters.p_recovery_run_id, ''' = ''''\n      OR EXISTS (\n          SELECT 1\n          FROM RankedAttempts AS ra\n          WHERE ra.rn = 1\n            AND ra.attempt_status = ''FAILED''\n            AND ra.dataset_id = l.dataset_id\n            AND ra.location_name = l.location_name\n      )\n  )\nORDER BY d.dataset_name, l.location_name;'\n)",
+								"value": "@concat(\n'DECLARE @recovery_run_id VARCHAR(100) = NULLIF(''',\npipeline().parameters.p_recovery_run_id,\n''', '''');\n\nDECLARE @effective_run_id VARCHAR(100) = NULL;\nDECLARE @effective_api_mode VARCHAR(20);\nDECLARE @effective_start_date DATE;\nDECLARE @effective_end_date DATE;\n\nIF @recovery_run_id IS NOT NULL\nBEGIN\n    SET @effective_run_id = @recovery_run_id;\nEND\nELSE\nBEGIN\n    SELECT TOP 1\n        @effective_run_id = run_id\n    FROM control.pipeline_run_history\n    WHERE run_status IN (''PARTIAL'', ''FAILED'')\n      AND api_mode IS NOT NULL\n      AND (\n          LOWER(api_mode) = ''forecast''\n          OR (\n              LOWER(api_mode) = ''archive''\n              AND start_date IS NOT NULL\n              AND end_date IS NOT NULL\n          )\n      )\n    ORDER BY started_at DESC;\nEND;\n\nIF @effective_run_id IS NOT NULL\nBEGIN\n    SELECT\n        @effective_api_mode = api_mode,\n        @effective_start_date = start_date,\n        @effective_end_date = end_date\n    FROM control.pipeline_run_history\n    WHERE run_id = @effective_run_id;\nEND\nELSE\nBEGIN\n    SET @effective_api_mode = ''', \npipeline().parameters.p_api_mode,\n''';\n    SET @effective_start_date = NULLIF(''',\npipeline().parameters.p_start_date,\n''', '''');\n    SET @effective_end_date = NULLIF(''',\npipeline().parameters.p_end_date,\n''', '''');\nEND;\n\n-- Result set 1: Effective request configuration\nSELECT\n    @effective_run_id AS recovery_run_id,\n    @effective_api_mode AS api_mode,\n    @effective_start_date AS start_date,\n    @effective_end_date AS end_date;\n\n-- Result set 2: All active locations for the current request\nSELECT\n    d.dataset_id,\n    d.dataset_name,\n    l.location_name,\n    l.latitude,\n    l.longitude\nFROM control.dataset_config d\nJOIN control.dataset_location l\n    ON d.dataset_id = l.dataset_id\nWHERE d.is_active = 1\n  AND l.is_active = 1\nORDER BY d.dataset_name, l.location_name;'\n)",
 								"type": "Expression"
 							}
 						}
@@ -358,6 +358,20 @@
 				"typeProperties": {
 					"storedProcedureName": "[control].[usp_StartPipelineRun]",
 					"storedProcedureParameters": {
+						"api_mode": {
+							"value": {
+								"value": "@pipeline().parameters.p_api_mode",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"end_date": {
+							"value": {
+								"value": "@pipeline().parameters.p_end_date",
+								"type": "Expression"
+							},
+							"type": "DateTime"
+						},
 						"pipeline_name": {
 							"value": {
 								"value": "@pipeline().Pipeline",
@@ -371,6 +385,13 @@
 								"type": "Expression"
 							},
 							"type": "String"
+						},
+						"start_date": {
+							"value": {
+								"value": "@pipeline().parameters.p_start_date",
+								"type": "Expression"
+							},
+							"type": "DateTime"
 						}
 					}
 				},
