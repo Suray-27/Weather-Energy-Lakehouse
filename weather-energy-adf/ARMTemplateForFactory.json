@@ -1,0 +1,987 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "weather-energy-adf"
+		},
+		"LS_SQL_Lookup_config_password": {
+			"type": "secureString",
+			"metadata": "Secure string for 'password' of 'LS_SQL_Lookup_config'"
+		},
+		"LS_ADLS_Gen2_Weather_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://energystrgacc.dfs.core.windows.net/"
+		},
+		"LS_OpenMeteo_HTTP_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "@{linkedService().p_base_url}"
+		},
+		"LS_SQL_Lookup_config_properties_typeProperties_server": {
+			"type": "string",
+			"defaultValue": "weather-energy.database.windows.net"
+		},
+		"LS_SQL_Lookup_config_properties_typeProperties_database": {
+			"type": "string",
+			"defaultValue": "weather_energy"
+		},
+		"LS_SQL_Lookup_config_properties_typeProperties_userName": {
+			"type": "string",
+			"defaultValue": "weather-energy"
+		},
+		"LS_Secret_properties_typeProperties_baseUrl": {
+			"type": "string",
+			"defaultValue": "https://WeatherSecret.vault.azure.net/"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_Weather_API_To_Bronze')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "CP_Chennai_Forecast_To_Bronze",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.10:00:00",
+							"retry": 2,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "JsonSource",
+								"storeSettings": {
+									"type": "HttpReadSettings",
+									"requestMethod": "GET"
+								},
+								"formatSettings": {
+									"type": "JsonReadSettings"
+								}
+							},
+							"sink": {
+								"type": "JsonSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "JsonWriteSettings"
+								}
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "DS_OpenMeteo_HTTP_Forecast",
+								"type": "DatasetReference",
+								"parameters": {
+									"p_latitude": {
+										"value": "@pipeline().parameters.p_latitude",
+										"type": "Expression"
+									},
+									"p_longitude": {
+										"value": "@pipeline().parameters.p_longitude",
+										"type": "Expression"
+									},
+									"p_start_date": {
+										"value": "@pipeline().parameters.p_start_date",
+										"type": "Expression"
+									},
+									"p_end_date": {
+										"value": "@pipeline().parameters.p_end_date",
+										"type": "Expression"
+									},
+									"p_api_mode": {
+										"value": "@pipeline().parameters.p_api_mode",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "DS_Bronze_Chennai_Forecast",
+								"type": "DatasetReference",
+								"parameters": {
+									"p_location": {
+										"value": "@pipeline().parameters.p_location",
+										"type": "Expression"
+									},
+									"p_fileName": {
+										"value": "@concat(\n    toLower(pipeline().parameters.p_api_mode),\n    '_',\n    formatDateTime(pipeline().parameters.p_start_date, 'yyyy-MM-dd'),\n    '_to_',\n    formatDateTime(pipeline().parameters.p_end_date, 'yyyy-MM-dd'),\n    '_',\n    formatDateTime(pipeline().TriggerTime, 'yyyyMMddTHHmmss'),\n    '.json'\n)",
+										"type": "Expression"
+									},
+									"p_apiMode": {
+										"value": "@pipeline().parameters.p_api_mode",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "FAIL_Weather_Ingestion",
+						"description": "",
+						"type": "Fail",
+						"dependsOn": [
+							{
+								"activity": "CP_Chennai_Forecast_To_Bronze",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"message": "Weather API ingestion failed. Check the Copy activity output",
+							"errorCode": "WEATHER_INGESTION_FAILED"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"p_location": {
+						"type": "string",
+						"defaultValue": "chennai"
+					},
+					"p_latitude": {
+						"type": "string",
+						"defaultValue": "13.0827"
+					},
+					"p_longitude": {
+						"type": "string",
+						"defaultValue": "80.2707"
+					},
+					"p_start_date": {
+						"type": "string"
+					},
+					"p_end_date": {
+						"type": "string"
+					},
+					"p_api_mode": {
+						"type": "string",
+						"defaultValue": "forecast"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-10-26T03:03:09Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_OpenMeteo_HTTP_Forecast')]",
+				"[concat(variables('factoryId'), '/datasets/DS_Bronze_Chennai_Forecast')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_Weather_Master')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "FE_Each_Weather_Location",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "Lookup_Table_To_Load",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('Lookup_Table_To_Load').output.resultSets[0].rows",
+								"type": "Expression"
+							},
+							"isSequential": true,
+							"activities": [
+								{
+									"name": "EP_Run_Weather_Ingestion",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "SP_Start_Ingestion_Attempt",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "PL_Weather_API_To_Bronze",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"p_location": {
+												"value": "@item().location_name",
+												"type": "Expression"
+											},
+											"p_latitude": {
+												"value": "@item().latitude",
+												"type": "Expression"
+											},
+											"p_longitude": {
+												"value": "@item().longitude",
+												"type": "Expression"
+											},
+											"p_start_date": {
+												"value": "@pipeline().parameters.p_start_date",
+												"type": "Expression"
+											},
+											"p_end_date": {
+												"value": "@pipeline().parameters.p_end_date",
+												"type": "Expression"
+											},
+											"p_api_mode": {
+												"value": "@pipeline().parameters.p_api_mode",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "SP_Start_Ingestion_Attempt",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[control].[usp_StartIngestionAttempt]",
+										"storedProcedureParameters": {
+											"attempt_number": {
+												"value": "1",
+												"type": "Int32"
+											},
+											"bronze_path": {
+												"value": "",
+												"type": "String"
+											},
+											"location_name": {
+												"value": {
+													"value": "@item().location_name",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"dataset_id": {
+												"value": {
+													"value": "@int(item().dataset_id)",
+													"type": "Expression"
+												},
+												"type": "Int32"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_SQL_Lookup_config",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "SP_Finish_Attempt_Succeeded",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "EP_Run_Weather_Ingestion",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[control].[usp_FinishIngestionAttempt]",
+										"storedProcedureParameters": {
+											"attempt_status": {
+												"value": "SUCCEEDED",
+												"type": "String"
+											},
+											"bronze_path": {
+												"value": "",
+												"type": "String"
+											},
+											"error_message": {
+												"value": "",
+												"type": "String"
+											},
+											"location_name": {
+												"value": {
+													"value": "@item().location_name",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"records_written": {
+												"value": "0",
+												"type": "Int64"
+											},
+											"run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"dataset_id": {
+												"value": {
+													"value": "@int(item().dataset_id)",
+													"type": "Expression"
+												},
+												"type": "Int32"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_SQL_Lookup_config",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "SP_Finish_Attempt_Failed",
+									"type": "SqlServerStoredProcedure",
+									"dependsOn": [
+										{
+											"activity": "EP_Run_Weather_Ingestion",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"storedProcedureName": "[[control].[usp_FinishIngestionAttempt]",
+										"storedProcedureParameters": {
+											"attempt_status": {
+												"value": "FAILED",
+												"type": "String"
+											},
+											"error_message": {
+												"value": {
+													"value": "@activity('EP_Run_Weather_Ingestion').error.message",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"location_name": {
+												"value": {
+													"value": "@item().location_name",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"records_written": {
+												"value": "0",
+												"type": "Int64"
+											},
+											"run_id": {
+												"value": {
+													"value": "@pipeline().RunId",
+													"type": "Expression"
+												},
+												"type": "String"
+											},
+											"dataset_id": {
+												"value": {
+													"value": "@int(item().dataset_id)",
+													"type": "Expression"
+												},
+												"type": "Int32"
+											},
+											"bronze_path": {
+												"value": "",
+												"type": "String"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "LS_SQL_Lookup_config",
+										"type": "LinkedServiceReference"
+									}
+								},
+								{
+									"name": "SV_Set_Failure_Location",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "EP_Run_Weather_Ingestion",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "v_temp_failed_locations",
+										"value": {
+											"value": "@union(\n    variables('v_failed_locations'),\n    createArray(item().location_name)\n)",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SV_Update_Failed_Locations",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "SV_Set_Failure_Location",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "v_failed_locations",
+										"value": {
+											"value": "@variables('v_temp_failed_locations')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "Lookup_Table_To_Load",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "SP_Start_Pipeline_Run",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 2,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_Lookup_config",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"type": "Query",
+									"text": {
+										"value": "@concat(\n'WITH RankedAttempts AS\n(\n    SELECT\n        dataset_id,\n        location_name,\n        attempt_status,\n        ROW_NUMBER() OVER (\n            PARTITION BY dataset_id, location_name\n            ORDER BY attempt_id DESC\n        ) AS rn\n    FROM control.ingestion_attempt_history\n    WHERE run_id = ''', pipeline().parameters.p_recovery_run_id, '''\n)\nSELECT\n    l.location_name,\n    l.latitude,\n    l.longitude,\n    l.dataset_id\nFROM control.dataset_config AS d\nJOIN control.dataset_location AS l\n    ON d.dataset_id = l.dataset_id\nWHERE d.is_active = 1\n  AND l.is_active = 1\n  AND (\n      ''', pipeline().parameters.p_recovery_run_id, ''' = ''''\n      OR EXISTS (\n          SELECT 1\n          FROM RankedAttempts AS ra\n          WHERE ra.rn = 1\n            AND ra.attempt_status = ''FAILED''\n            AND ra.dataset_id = l.dataset_id\n            AND ra.location_name = l.location_name\n      )\n  )\nORDER BY d.dataset_name, l.location_name;'\n)",
+										"type": "Expression"
+									}
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
+						}
+					},
+					{
+						"name": "SP_Start_Pipeline_Run",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[control].[usp_StartPipelineRun]",
+							"storedProcedureParameters": {
+								"pipeline_name": {
+									"value": {
+										"value": "@pipeline().Pipeline",
+										"type": "Expression"
+									},
+									"type": "String"
+								},
+								"run_id": {
+									"value": {
+										"value": "@pipeline().RunId",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_Lookup_config",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "SP_Finish_Pipeline_Run",
+						"type": "SqlServerStoredProcedure",
+						"dependsOn": [
+							{
+								"activity": "IF_Check_Failed_Locations",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"storedProcedureName": "[[control].[usp_FinishPipelineRunFromAttempts]",
+							"storedProcedureParameters": {
+								"run_id": {
+									"value": {
+										"value": "@pipeline().RunId",
+										"type": "Expression"
+									},
+									"type": "String"
+								}
+							}
+						},
+						"linkedServiceName": {
+							"referenceName": "LS_SQL_Lookup_config",
+							"type": "LinkedServiceReference"
+						}
+					},
+					{
+						"name": "IF_Check_Failed_Locations",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "FE_Each_Weather_Location",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greater(length(variables('v_failed_locations')), 0)",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "FAIL_Location_Processing",
+									"type": "Fail",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"message": {
+											"value": "@concat(\n    'Weather ingestion failed for locations: ',\n    join(variables('v_failed_locations'), ', ')\n)",
+											"type": "Expression"
+										},
+										"errorCode": "LOCATION_PROCESSING_FAILED"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "LK_Get_Final_Run_Status",
+						"type": "Lookup",
+						"dependsOn": [
+							{
+								"activity": "SP_Finish_Pipeline_Run",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "AzureSqlSource",
+								"sqlReaderQuery": {
+									"value": "@concat(\n    'SELECT run_status FROM control.pipeline_run_history WHERE run_id = ''',\n    pipeline().RunId,\n    ''''\n)",
+									"type": "Expression"
+								},
+								"queryTimeout": "02:00:00",
+								"partitionOption": "None"
+							},
+							"dataset": {
+								"referenceName": "Lookup_config_table",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						}
+					},
+					{
+						"name": "IF_Final_Status_Check",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "LK_Get_Final_Run_Status",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@not(equals(\n    activity('LK_Get_Final_Run_Status').output.firstRow.run_status,\n    'SUCCEEDED'\n))",
+								"type": "Expression"
+							},
+							"ifTrueActivities": [
+								{
+									"name": "FAIL_Final_Pipeline_Status",
+									"type": "Fail",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"message": "One or more location ingestions failed. Check pipeline_run_history for details.",
+										"errorCode": "INGESTION_NOT_SUCCESSFUL"
+									}
+								}
+							]
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"p_start_date": {
+						"type": "string",
+						"defaultValue": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
+					},
+					"p_end_date": {
+						"type": "string",
+						"defaultValue": "@formatDateTime(utcNow(), 'yyyy-MM-dd')"
+					},
+					"p_api_mode": {
+						"type": "string"
+					},
+					"p_recovery_run_id": {
+						"type": "string"
+					}
+				},
+				"variables": {
+					"v_loaction": {
+						"type": "String"
+					},
+					"v_failed_locations": {
+						"type": "Array"
+					},
+					"v_temp_failed_locations": {
+						"type": "Array"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2026-10-26T03:20:21Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_SQL_Lookup_config')]",
+				"[concat(variables('factoryId'), '/datasets/Lookup_config_table')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_Weather_API_To_Bronze')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_Bronze_Chennai_Forecast')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_Gen2_Weather",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"p_location": {
+						"type": "string",
+						"defaultValue": "chennai"
+					},
+					"p_fileName": {
+						"type": "string",
+						"defaultValue": "forecast.json"
+					},
+					"p_apiMode": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().p_fileName",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@concat('weather/',toLower(dataset().p_apiMode),'/location=', dataset().p_location)",
+							"type": "Expression"
+						},
+						"fileSystem": "bronze"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_Gen2_Weather')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_OpenMeteo_HTTP_Forecast')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_OpenMeteo_HTTP",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"p_base_url": {
+							"value": "@if(equals(dataset().p_api_mode, 'archive'), 'https://archive-api.open-meteo.com/', 'https://api.open-meteo.com/')",
+							"type": "Expression"
+						}
+					}
+				},
+				"parameters": {
+					"p_latitude": {
+						"type": "string",
+						"defaultValue": "13.0827"
+					},
+					"p_longitude": {
+						"type": "string",
+						"defaultValue": "80.2707"
+					},
+					"p_start_date": {
+						"type": "string"
+					},
+					"p_end_date": {
+						"type": "string"
+					},
+					"p_api_mode": {
+						"type": "string",
+						"defaultValue": "forecast"
+					}
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "HttpServerLocation",
+						"relativeUrl": {
+							"value": "@if(equals(dataset().p_api_mode, 'forecast'), concat('v1/forecast?latitude=', dataset().p_latitude, '&longitude=', dataset().p_longitude, '&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&forecast_days=7&timezone=UTC'), concat('v1/archive?latitude=', dataset().p_latitude, '&longitude=', dataset().p_longitude, '&hourly=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m&start_date=', dataset().p_start_date, '&end_date=', dataset().p_end_date, '&timezone=UTC'))",
+							"type": "Expression"
+						}
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_OpenMeteo_HTTP')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_Weather_Bronze_JSON')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_ADLS_Gen2_Weather",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": "weather",
+						"fileSystem": "bronze"
+					}
+				},
+				"schema": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_ADLS_Gen2_Weather')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Lookup_config_table')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "LS_SQL_Lookup_config",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "control",
+					"table": "dataset_location"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_SQL_Lookup_config')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_ADLS_Gen2_Weather')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('LS_ADLS_Gen2_Weather_properties_typeProperties_url')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_OpenMeteo_HTTP')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"parameters": {
+					"p_base_url": {
+						"type": "string",
+						"defaultValue": "https://api.open-meteo.com/"
+					}
+				},
+				"annotations": [],
+				"type": "HttpServer",
+				"typeProperties": {
+					"url": "[parameters('LS_OpenMeteo_HTTP_properties_typeProperties_url')]",
+					"enableServerCertificateValidation": true,
+					"authenticationType": "Anonymous"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_SQL_Lookup_config')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"server": "[parameters('LS_SQL_Lookup_config_properties_typeProperties_server')]",
+					"database": "[parameters('LS_SQL_Lookup_config_properties_typeProperties_database')]",
+					"encrypt": "strict",
+					"trustServerCertificate": false,
+					"authenticationType": "SQL",
+					"userName": "[parameters('LS_SQL_Lookup_config_properties_typeProperties_userName')]",
+					"password": {
+						"type": "SecureString",
+						"value": "[parameters('LS_SQL_Lookup_config_password')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_Secret')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureKeyVault",
+				"typeProperties": {
+					"baseUrl": "[parameters('LS_Secret_properties_typeProperties_baseUrl')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_Weather_Master')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_Weather_Master",
+							"type": "PipelineReference"
+						},
+						"parameters": {}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2026-10-25T06:00:00",
+						"timeZone": "India Standard Time"
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_Weather_Master')]"
+			]
+		}
+	]
+}

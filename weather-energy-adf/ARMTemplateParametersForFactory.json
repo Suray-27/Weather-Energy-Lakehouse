@@ -1,0 +1,30 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "weather-energy-adf"
+		},
+		"LS_SQL_Lookup_config_password": {
+			"value": ""
+		},
+		"LS_ADLS_Gen2_Weather_properties_typeProperties_url": {
+			"value": "https://energystrgacc.dfs.core.windows.net/"
+		},
+		"LS_OpenMeteo_HTTP_properties_typeProperties_url": {
+			"value": "@{linkedService().p_base_url}"
+		},
+		"LS_SQL_Lookup_config_properties_typeProperties_server": {
+			"value": "weather-energy.database.windows.net"
+		},
+		"LS_SQL_Lookup_config_properties_typeProperties_database": {
+			"value": "weather_energy"
+		},
+		"LS_SQL_Lookup_config_properties_typeProperties_userName": {
+			"value": "weather-energy"
+		},
+		"LS_Secret_properties_typeProperties_baseUrl": {
+			"value": "https://WeatherSecret.vault.azure.net/"
+		}
+	}
+}
