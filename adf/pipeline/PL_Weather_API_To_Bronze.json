@@ -48,6 +48,18 @@
 							"p_longitude": {
 								"value": "@pipeline().parameters.p_longitude",
 								"type": "Expression"
+							},
+							"p_start_date": {
+								"value": "@pipeline().parameters.p_start_date",
+								"type": "Expression"
+							},
+							"p_end_date": {
+								"value": "@pipeline().parameters.p_end_date",
+								"type": "Expression"
+							},
+							"p_api_mode": {
+								"value": "@pipeline().parameters.p_api_mode",
+								"type": "Expression"
 							}
 						}
 					}
@@ -62,7 +74,7 @@
 								"type": "Expression"
 							},
 							"p_fileName": {
-								"value": "forecast.json",
+								"value": "@concat(pipeline().RunId, '_forecast.json')",
 								"type": "Expression"
 							}
 						}
@@ -100,6 +112,16 @@
 			"p_longitude": {
 				"type": "string",
 				"defaultValue": "80.2707"
+			},
+			"p_start_date": {
+				"type": "string"
+			},
+			"p_end_date": {
+				"type": "string"
+			},
+			"p_api_mode": {
+				"type": "string",
+				"defaultValue": "forecast"
 			}
 		},
 		"annotations": [],
