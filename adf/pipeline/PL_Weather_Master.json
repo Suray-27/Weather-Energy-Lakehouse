@@ -452,7 +452,14 @@
 			{
 				"name": "LK_Get_Final_Run_Status",
 				"type": "Lookup",
-				"dependsOn": [],
+				"dependsOn": [
+					{
+						"activity": "SP_Finish_Pipeline_Run",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
 				"policy": {
 					"timeout": "0.12:00:00",
 					"retry": 0,
