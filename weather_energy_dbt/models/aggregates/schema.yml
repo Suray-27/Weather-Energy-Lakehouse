@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: agg_weather_daily
+    description: "Daily weather metrics aggregated by location and date"
+
+    columns:
+      - name: location_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_location')
+                field: location_key
+
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: total_hourly_records
+        data_tests:
+          - not_null
+
+      - name: avg_temperature
+        data_tests:
+          - not_null

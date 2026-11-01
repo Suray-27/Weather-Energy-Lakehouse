@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: fct_weather_hourly
+    description: "Hourly weather fact table"
+
+    columns:
+      - name: location_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_location')
+                field: location_key
+
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: weather_timestamp
+        description: "Timestamp of the hourly weather observation"
+        data_tests:
+          - not_null
+
+      - name: temperature_2m
+        description: "Air temperature measured at 2 metres above ground level"
+        data_tests:
+          - not_null
+      
+      - name: relative_humidity_2m
+        description: "Relative humidity measured at 2 metres"
+
+      - name: precipitation
+        description: "Hourly precipitation amount"
+
+      - name: wind_speed_10m
+        description: "Wind speed measured at 10 metres"

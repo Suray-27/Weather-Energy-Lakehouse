@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: dim_location
+    description: "Dimension containing unique weather locations"
+    columns:
+      - name: location_key
+        description: "Unique SHA-256 key for each location"
+        data_tests:
+          - not_null
+          - unique
+
+      - name: location
+        data_tests:
+          - not_null
+          - unique
+
+  - name: dim_date
+    description: "Calendar dimension for weather reporting"
+    columns:
+      - name: date_key
+        data_tests:
+          - not_null
+          - unique
+
+      - name: date_day
+        data_tests:
+          - not_null
+          - unique
