@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: silver
+    description: "Cleaned hourly weather data from the Silver layer"
+    database: workspace
+    schema: default
+
+    tables:
+      - name: weather_hourly_silver
+        description: "Deduplicated hourly weather records for Chennai, Bengaluru and Hyderabad"
