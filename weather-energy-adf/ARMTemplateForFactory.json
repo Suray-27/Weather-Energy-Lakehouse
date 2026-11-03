@@ -171,8 +171,12 @@
 						"type": "string"
 					},
 					"p_api_mode": {
-						"type": "string",
-						"defaultValue": "forecast"
+						"type": "string"
+					}
+				},
+				"variables": {
+					"v_debug_url": {
+						"type": "String"
 					}
 				},
 				"annotations": [],
@@ -760,6 +764,9 @@
 					},
 					"v_temp_failed_locations": {
 						"type": "Array"
+					},
+					"v_debug_url": {
+						"type": "String"
 					}
 				},
 				"annotations": [],
@@ -832,12 +839,10 @@
 				},
 				"parameters": {
 					"p_latitude": {
-						"type": "string",
-						"defaultValue": "13.0827"
+						"type": "string"
 					},
 					"p_longitude": {
-						"type": "string",
-						"defaultValue": "80.2707"
+						"type": "string"
 					},
 					"p_start_date": {
 						"type": "string"
@@ -846,8 +851,7 @@
 						"type": "string"
 					},
 					"p_api_mode": {
-						"type": "string",
-						"defaultValue": "forecast"
+						"type": "string"
 					}
 				},
 				"annotations": [],
