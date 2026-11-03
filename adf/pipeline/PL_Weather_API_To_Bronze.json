@@ -124,8 +124,12 @@
 				"type": "string"
 			},
 			"p_api_mode": {
-				"type": "string",
-				"defaultValue": "forecast"
+				"type": "string"
+			}
+		},
+		"variables": {
+			"v_debug_url": {
+				"type": "String"
 			}
 		},
 		"annotations": [],

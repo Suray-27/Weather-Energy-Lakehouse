@@ -569,6 +569,9 @@
 			},
 			"v_temp_failed_locations": {
 				"type": "Array"
+			},
+			"v_debug_url": {
+				"type": "String"
 			}
 		},
 		"annotations": [],
