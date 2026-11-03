@@ -13,12 +13,10 @@
 		},
 		"parameters": {
 			"p_latitude": {
-				"type": "string",
-				"defaultValue": "13.0827"
+				"type": "string"
 			},
 			"p_longitude": {
-				"type": "string",
-				"defaultValue": "80.2707"
+				"type": "string"
 			},
 			"p_start_date": {
 				"type": "string"
@@ -27,8 +25,7 @@
 				"type": "string"
 			},
 			"p_api_mode": {
-				"type": "string",
-				"defaultValue": "forecast"
+				"type": "string"
 			}
 		},
 		"annotations": [],
