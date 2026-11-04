@@ -1,27 +1,67 @@
-{{ config(
-    materialized='table',
-    schema='aggregates'
-) }}
 
-SELECT
-    location_key,
-    date_key,
+{{
+    config(
+        materialized='incremental',
+        incremental_strategy='merge',
+        unique_key=['location_key', 'date_key'],
+        schema='aggregates',
+        on_schema_change='append_new_columns'
+    )
+}}
 
-    COUNT(*) AS total_hourly_records,
+WITH affected_dates AS (
 
-    ROUND(AVG(temperature_2m), 2) AS avg_temperature,
-    ROUND(MIN(temperature_2m), 2) AS min_temperature,
-    ROUND(MAX(temperature_2m), 2) AS max_temperature,
+    SELECT DISTINCT
+        location_key,
+        date_key
 
-    ROUND(AVG(relative_humidity_2m), 2) AS avg_relative_humidity,
+    FROM {{ ref('fct_weather_hourly') }}
 
-    ROUND(SUM(precipitation), 2) AS total_precipitation,
+    {% if is_incremental() %}
 
-    ROUND(AVG(wind_speed_10m), 2) AS avg_wind_speed,
-    ROUND(MAX(wind_speed_10m), 2) AS max_wind_speed
+    WHERE ingested_at_utc >= (
+        SELECT COALESCE(
+            MAX(source_max_ingested_at),
+            CAST('1900-01-01' AS TIMESTAMP)
+        )
+        FROM {{ this }}
+    )
 
-FROM {{ ref('fct_weather_hourly') }}
+    {% endif %}
+),
 
-GROUP BY
-    location_key,
-    date_key
+daily_aggregates AS (
+
+    SELECT
+        f.location_key,
+        f.date_key,
+
+        COUNT(*) AS total_hourly_records,
+
+        ROUND(AVG(f.temperature_2m), 2) AS avg_temperature,
+        ROUND(MIN(f.temperature_2m), 2) AS min_temperature,
+        ROUND(MAX(f.temperature_2m), 2) AS max_temperature,
+
+        ROUND(AVG(f.relative_humidity_2m), 2)
+            AS avg_relative_humidity,
+
+        ROUND(SUM(f.precipitation), 2) AS total_precipitation,
+
+        ROUND(AVG(f.wind_speed_10m), 2) AS avg_wind_speed,
+        ROUND(MAX(f.wind_speed_10m), 2) AS max_wind_speed,
+
+        MAX(f.ingested_at_utc) AS source_max_ingested_at
+
+    FROM {{ ref('fct_weather_hourly') }} f
+
+    INNER JOIN affected_dates a
+        ON f.location_key = a.location_key
+        AND f.date_key = a.date_key
+
+    GROUP BY
+        f.location_key,
+        f.date_key
+)
+
+SELECT *
+FROM daily_aggregates
