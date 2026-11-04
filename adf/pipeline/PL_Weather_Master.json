@@ -138,7 +138,7 @@
 					{
 						"activity": "FE_All_Ingestion",
 						"dependencyConditions": [
-							"Succeeded"
+							"Completed"
 						]
 					}
 				],
