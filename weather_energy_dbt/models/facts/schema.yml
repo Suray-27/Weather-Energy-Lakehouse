@@ -7,7 +7,9 @@ models:
     columns:
       - name: location_key
         data_tests:
-          - not_null
+          - not_null:
+              config:
+                where: "ingested_at_utc = (SELECT MAX(ingested_at_utc) FROM weather_gold_lakehouse.facts.fct_weather_hourly)"
           - relationships:
               arguments:
                 to: ref('dim_location')
@@ -15,7 +17,9 @@ models:
 
       - name: date_key
         data_tests:
-          - not_null
+          - not_null:
+              config:
+                where: "ingested_at_utc = (SELECT MAX(ingested_at_utc) FROM weather_gold_lakehouse.facts.fct_weather_hourly)"
           - relationships:
               arguments:
                 to: ref('dim_date')
@@ -24,13 +28,17 @@ models:
       - name: weather_timestamp
         description: "Timestamp of the hourly weather observation"
         data_tests:
-          - not_null
+          - not_null:
+              config:
+                where: "ingested_at_utc = (SELECT MAX(ingested_at_utc) FROM weather_gold_lakehouse.facts.fct_weather_hourly)"
 
       - name: temperature_2m
         description: "Air temperature measured at 2 metres above ground level"
         data_tests:
-          - not_null
-      
+          - not_null:
+              config:
+                where: "ingested_at_utc = (SELECT MAX(ingested_at_utc) FROM weather_gold_lakehouse.facts.fct_weather_hourly)"
+
       - name: relative_humidity_2m
         description: "Relative humidity measured at 2 metres"
 

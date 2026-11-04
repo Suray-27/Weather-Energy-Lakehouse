@@ -1,7 +1,12 @@
-{{ config(
-    materialized='table',
-    schema='facts'
-) }}
+
+{{
+    config(
+        materialized='incremental',
+        incremental_strategy='merge',
+        unique_key=['location_key', 'weather_timestamp'],
+        schema='facts'
+    )
+}}
 
 SELECT
     dl.location_key,
@@ -27,3 +32,13 @@ INNER JOIN {{ ref('dim_location') }} dl
 
 INNER JOIN {{ ref('dim_date') }} dd
     ON TO_DATE(s.weather_timestamp) = dd.date_day
+
+{% if is_incremental() %}
+WHERE s.ingested_at_utc >= (
+    SELECT COALESCE(
+        MAX(ingested_at_utc),
+        CAST('1900-01-01' AS TIMESTAMP)
+    )
+    FROM {{ this }}
+)
+{% endif %}

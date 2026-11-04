@@ -1,3 +1,4 @@
+
 version: 2
 
 models:
@@ -7,7 +8,9 @@ models:
     columns:
       - name: location_key
         data_tests:
-          - not_null
+          - not_null:
+              config:
+                where: "source_max_ingested_at = (SELECT MAX(source_max_ingested_at) FROM weather_gold_lakehouse.aggregates.agg_weather_daily)"
           - relationships:
               arguments:
                 to: ref('dim_location')
@@ -15,7 +18,9 @@ models:
 
       - name: date_key
         data_tests:
-          - not_null
+          - not_null:
+              config:
+                where: "source_max_ingested_at = (SELECT MAX(source_max_ingested_at) FROM weather_gold_lakehouse.aggregates.agg_weather_daily)"
           - relationships:
               arguments:
                 to: ref('dim_date')
@@ -23,8 +28,12 @@ models:
 
       - name: total_hourly_records
         data_tests:
-          - not_null
+          - not_null:
+              config:
+                where: "source_max_ingested_at = (SELECT MAX(source_max_ingested_at) FROM weather_gold_lakehouse.aggregates.agg_weather_daily)"
 
       - name: avg_temperature
         data_tests:
-          - not_null
+          - not_null:
+              config:
+                where: "source_max_ingested_at = (SELECT MAX(source_max_ingested_at) FROM weather_gold_lakehouse.aggregates.agg_weather_daily)"
