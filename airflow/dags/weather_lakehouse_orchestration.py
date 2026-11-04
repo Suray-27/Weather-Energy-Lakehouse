@@ -20,14 +20,14 @@ PIPELINE_NAME = "PL_Weather_Master"
     start_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
     catchup=False,
     params={
-        "api_mode": Param(
-            "forecast",
-            type="string",
-            enum=["forecast", "archive"],
-        ),
-        "start_date": Param("", type="string"),
-        "end_date": Param("", type="string"),
-    },
+    "api_mode": Param(
+        "forecast",
+        type="string",
+        enum=["forecast", "archive"],
+    ),
+    "start_date": Param("", type="string"),
+    "end_date": Param("", type="string"),
+},
     tags=["weather", "azure", "adf"],
 )
 def weather_lakehouse_orchestration():
@@ -47,6 +47,7 @@ def weather_lakehouse_orchestration():
         end_date = params["end_date"]
 
         if api_mode == "archive":
+
             if not start_date or not end_date:
                 raise ValueError(
                     "Archive mode requires both start_date and end_date."
@@ -56,19 +57,14 @@ def weather_lakehouse_orchestration():
             end = datetime.strptime(end_date, "%Y-%m-%d").date()
 
             if start > end:
-                raise ValueError("start_date must not be after end_date.")
+                raise ValueError("Start date cannot be after end date.")
 
-        else:
-            if not start_date or not end_date:
-                raise ValueError(
-                    "Forecast mode requires start_date and end_date."
-                )
+        elif api_mode == "forecast":
 
-            start = datetime.strptime(start_date, "%Y-%m-%d").date()
-            end = datetime.strptime(end_date, "%Y-%m-%d").date()
+            start_date = ""
+            end_date = ""
 
-            if start > end:
-                raise ValueError("start_date must not be after end_date.")
+            print("Forecast mode: Automatically fetching next 7 days.")
 
         parameters = {
             "p_api_mode": api_mode,
