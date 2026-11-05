@@ -1,4 +1,4 @@
-# Weather & Energy Lakehouse: Automated Medallion Data Platform
+# WeatherFlow – Azure-Based Weather Data Lakehouse
 
 An end-to-end data engineering project that ingests, processes, and transforms hourly weather data from the Open-Meteo REST API using Microsoft Azure, Azure Databricks, PySpark, dbt, and Apache Airflow.
 
